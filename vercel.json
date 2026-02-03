@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "name": "bot-dashboard",
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/server.js"
+    }
+  ],
+  "env": {
+    "SUPERVISOR_API": "http://localhost:9800",
+    "SUPERVISOR_API_KEY": "supervisor-token-1769976836",
+    "DASHBOARD_PORT": "3000"
+  }
+}
