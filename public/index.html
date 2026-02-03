@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bot Dashboard - Supervisor & Rex</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 30px;
+      border-radius: 20px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header .status {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .status-badge {
+      padding: 10px 20px;
+      border-radius: 50px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-badge.online {
+      background: #10b981;
+      color: white;
+    }
+
+    .status-badge.offline {
+      background: #ef4444;
+      color: white;
+    }
+
+    .status-badge.checking {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 25px;
+      margin-bottom: 25px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 25px;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #667eea;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card h2 .emoji { font-size: 28px; }
+
+    .bot-info {
+      display: grid;
+      gap: 15px;
+    }
+
+    .bot-stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 15px;
+      background: #f8fafc;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    .bot-stat .label { color: #64748b; }
+    .bot-stat .value { font-weight: 600; color: #1e293b; }
+
+    .messages-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 15px;
+    }
+
+    .message {
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      background: #f1f5f9;
+      border-left: 3px solid #667eea;
+    }
+
+    .message .meta {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 5px;
+    }
+
+    .message .text {
+      font-size: 13px;
+      color: #334155;
+    }
+
+    .task-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .task {
+      padding: 15px;
+      margin-bottom: 12px;
+      border-radius: 12px;
+      border: 2px solid;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .task:hover { transform: translateX(5px); }
+
+    .task.urgent {
+      border-color: #ef4444;
+      background: #fef2f2;
+    }
+
+    .task.high {
+      border-color: #f59e0b;
+      background: #fffbeb;
+    }
+
+    .task.medium {
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+
+    .task.complete {
+      opacity: 0.6;
+      text-decoration: line-through;
+      border-color: #10b981;
+      background: #d1fae5;
+    }
+
+    .task-info { flex: 1; }
+    .task-info h3 { font-size: 15px; margin-bottom: 5px; }
+    .task-info .meta { font-size: 12px; color: #64748b; }
+
+    .task-actions { display: flex; gap: 10px; }
+
+    .task-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .task-btn.complete {
+      background: #10b981;
+      color: white;
+    }
+
+    .task-btn.delete {
+      background: #ef4444;
+      color: white;
+    }
+
+    .task-btn:hover { transform: scale(1.05); }
+
+    .alerts {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 350px;
+      max-height: 500px;
+      overflow-y: auto;
+      z-index: 1000;
+    }
+
+    .alert {
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      background: white;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      border-left: 4px solid;
+      animation: slideIn 0.3s ease;
+    }
+
+    .alert.urgent { border-color: #ef4444; }
+    .alert.warning { border-color: #f59e0b; }
+    .alert.info { border-color: #3b82f6; }
+
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #667eea;
+      color: white;
+    }
+
+    .action-btn:hover { transform: scale(1.05); background: #764ba2; }
+
+    .kg-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    .kg-stat {
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 15px;
+      color: white;
+      text-align: center;
+    }
+
+    .kg-stat .number { font-size: 32px; font-weight: bold; margin-bottom: 5px; }
+    .kg-stat .label { font-size: 12px; opacity: 0.9; }
+
+    .add-task-form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .add-task-form input,
+    .add-task-form select {
+      padding: 12px 15px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 14px;
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .add-task-form button {
+      padding: 12px 20px;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .add-task-form button:hover { background: #059669; }
+
+    .last-updated {
+      text-align: center;
+      color: white;
+      padding: 20px;
+      font-size: 13px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 15px;
+      margin-top: 20px;
+    }
+
+    .refresh-indicator {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  </style>
+</head>
+<body>
+  <div class="alerts" id="alerts"></div>
+
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>🤖 Bot Dashboard</h1>
+        <p style="color: #64748b; margin-top: 5px;">Supervisor & Rex Coordination</p>
+      </div>
+      <div class="status">
+        <div class="status-badge" id="connectionStatus">
+          <span class="refresh-indicator">🔄</span>
+          Connecting...
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Supervisor Card -->
+      <div class="card">
+        <h2><span class="emoji">🧠</span> Supervisor</h2>
+        <div class="bot-info">
+          <div class="bot-stat">
+            <span class="label">Status</span>
+            <span class="value" id="supervisorStatus">Checking...</span>
+          </div>
+          <div class="bot-stat">
+            <span class="label">Port</span>
+            <span class="value">9800</span>
+          </div>
+          <div class="bot-stat">
+            <span class="label">Webhooks</span>
+            <span class="value" id="supervisorWebhooks">-</span>
+          </div>
+          <div class="bot-stat">
+            <span class="label">Messages (In)</span>
+            <span class="value" id="supervisorMessages">-</span>
+          </div>
+        </div>
+        <div class="messages-list" id="supervisorMessagesList"></div>
+      </div>
+
+      <!-- Rex Card -->
+      <div class="card">
+        <h2><span class="emoji">🦞</span> Rex</h2>
+        <div class="bot-info">
+          <div class="bot-stat">
+            <span class="label">Status</span>
+            <span class="value" id="rexStatus">Checking...</span>
+          </div>
+          <div class="bot-stat">
+            <span class="label">Port</span>
+            <span class="value">9801</span>
+          </div>
+          <div class="bot-stat">
+            <span class="label">Version</span>
+            <span class="value" id="rexVersion">-</span>
+          </div>
+          <div class="bot-stat">
+            <span class="label">Uptime</span>
+            <span class="value" id="rexUptime">-</span>
+          </div>
+        </div>
+        <div class="messages-list" id="rexMessagesList"></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Tasks Card -->
+      <div class="card" style="grid-column: span 2;">
+        <h2><span class="emoji">📋</span> Tasks</h2>
+        <div class="add-task-form">
+          <input type="text" id="newTaskName" placeholder="Task name...">
+          <select id="newTaskPriority">
+            <option value="URGENT">🔴 URGENT</option>
+            <option value="HIGH">🟡 HIGH</option>
+            <option value="MEDIUM">🟢 MEDIUM</option>
+          </select>
+          <input type="date" id="newTaskDue">
+          <button onclick="addTask()">+ Add Task</button>
+        </div>
+        <div class="task-list" id="taskList"></div>
+      </div>
+
+      <!-- Knowledge Graph Card -->
+      <div class="card">
+        <h2><span class="emoji">🔗</span> Knowledge Graph</h2>
+        <div class="kg-stats">
+          <div class="kg-stat">
+            <div class="number" id="kgNodes">-</div>
+            <div class="label">Nodes</div>
+          </div>
+          <div class="kg-stat">
+            <div class="number" id="kgRelationships">-</div>
+            <div class="label">Relationships</div>
+          </div>
+        </div>
+        <div class="bot-stat" style="margin-top: 15px;">
+          <span class="label">Status</span>
+          <span class="value" id="kgStatus">-</span>
+        </div>
+        <div class="bot-stat">
+          <span class="label">Last Update</span>
+          <span class="value" id="kgLastUpdate">-</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+      <h2><span class="emoji">⚡</span> Quick Actions</h2>
+      <div class="quick-actions">
+        <button class="action-btn" onclick="sendToSupervisor()">📧 Message Supervisor</button>
+        <button class="action-btn" onclick="sendToRex()">📧 Message Rex</button>
+        <button class="action-btn" onclick="refreshAll()">🔄 Refresh All</button>
+        <button class="action-btn" onclick="window.location.reload()">⟳ Reload Dashboard</button>
+      </div>
+    </div>
+
+    <div class="last-updated" id="lastUpdated">
+      Last updated: Checking...
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let state = {};
+
+    // Connection
+    socket.on('connect', () => {
+      document.getElementById('connectionStatus').className = 'status-badge online';
+      document.getElementById('connectionStatus').innerHTML = '✅ Connected';
+      console.log('Connected to dashboard');
+    });
+
+    socket.on('disconnect', () => {
+      document.getElementById('connectionStatus').className = 'status-badge offline';
+      document.getElementById('connectionStatus').innerHTML = '❌ Disconnected';
+    });
+
+    // Real-time updates
+    socket.on('update', (update) => {
+      state = { ...state, ...update };
+      render();
+    });
+
+    function render() {
+      if (!state.supervisor || !state.rex) return;
+
+      // Supervisor
+      document.getElementById('supervisorStatus').innerHTML = getStatusBadge(state.supervisor.status);
+      document.getElementById('supervisorWebhooks').textContent = state.supervisor.webhooks?.length || 0;
+      document.getElementById('supervisorMessages').textContent = state.supervisor.messages?.length || 0;
+      renderMessages('supervisorMessagesList', state.supervisor.messages, 'Supervisor');
+
+      // Rex
+      document.getElementById('rexStatus').innerHTML = getStatusBadge(state.rex.status);
+      document.getElementById('rexVersion').textContent = state.rex.version || '-';
+      document.getElementById('rexUptime').textContent = formatUptime(state.rex.uptime);
+      renderMessages('rexMessagesList', state.rex.messages, 'Rex');
+
+      // Tasks
+      renderTasks();
+
+      // Knowledge Graph
+      document.getElementById('kgNodes').textContent = state.kgStats?.nodes || '-';
+      document.getElementById('kgRelationships').textContent = state.kgStats?.relationships || '-';
+      document.getElementById('kgStatus').textContent = state.kgStats?.status || '-';
+      document.getElementById('kgLastUpdate').textContent = formatDate(state.kgStats?.lastUpdate);
+
+      // Alerts
+      renderAlerts();
+
+      // Last updated
+      document.getElementById('lastUpdated').textContent = `Last updated: ${new Date().toLocaleString()}`;
+    }
+
+    function renderMessages(containerId, messages, botName) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+
+      (messages || []).slice(-5).forEach(msg => {
+        const div = document.createElement('div');
+        div.className = 'message';
+        div.innerHTML = `
+          <div class="meta">${msg.from || 'Unknown'} • ${formatDate(msg.timestamp)}</div>
+          <div class="text">${msg.message.substring(0, 80)}${msg.message.length > 80 ? '...' : ''}</div>
+        `;
+        container.appendChild(div);
+      });
+
+      if (messages?.length === 0) {
+        container.innerHTML = '<div style="padding: 12px; color: #64748b; font-size: 13px;">No messages</div>';
+      }
+    }
+
+    function renderTasks() {
+      const container = document.getElementById('taskList');
+      container.innerHTML = '';
+
+      (state.tasks || []).forEach(task => {
+        const div = document.createElement('div');
+        div.className = `task ${task.priority.toLowerCase()} ${task.status}`;
+        div.innerHTML = `
+          <div class="task-info">
+            <h3>${task.name}</h3>
+            <div class="meta">
+              ${getPriorityEmoji(task.priority)} ${task.priority} • Due: ${task.due}
+            </div>
+          </div>
+          <div class="task-actions">
+            ${task.status !== 'complete' ? `<button class="task-btn complete" onclick="completeTask(${task.id})">✓</button>` : ''}
+            <button class="task-btn delete" onclick="deleteTask(${task.id})">✗</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function renderAlerts() {
+      const container = document.getElementById('alerts');
+      container.innerHTML = '';
+
+      (state.alerts || []).forEach(alert => {
+        const div = document.createElement('div');
+        div.className = `alert ${alert.type}`;
+        div.innerHTML = `<strong>${alert.message}</strong>`;
+        container.appendChild(div);
+      });
+    }
+
+    function getStatusBadge(status) {
+      switch(status) {
+        case 'online': return '<span style="color: #10b981;">● Online</span>';
+        case 'offline': return '<span style="color: #ef4444;">● Offline</span>';
+        default: return '<span style="color: #f59e0b;">● Checking...</span>';
+      }
+    }
+
+    function getPriorityEmoji(priority) {
+      switch(priority) {
+        case 'URGENT': return '🔴';
+        case 'HIGH': return '🟡';
+        case 'MEDIUM': return '🟢';
+        default: return '○';
+      }
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      return new Date(dateStr).toLocaleString();
+    }
+
+    function formatUptime(seconds) {
+      if (!seconds) return '-';
+      const hours = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      return `${hours}h ${mins}m`;
+    }
+
+    async function addTask() {
+      const name = document.getElementById('newTaskName').value;
+      const priority = document.getElementById('newTaskPriority').value;
+      const due = document.getElementById('newTaskDue').value;
+
+      if (!name) return alert('Please enter task name');
+
+      try {
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, priority, due, status: 'pending' })
+        });
+        if (res.ok) {
+          document.getElementById('newTaskName').value = '';
+        }
+      } catch (error) {
+        alert('Failed to add task');
+      }
+    }
+
+    async function completeTask(id) {
+      try {
+        await fetch(`/api/tasks/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'complete' })
+        });
+      } catch (error) {
+        alert('Failed to complete task');
+      }
+    }
+
+    async function deleteTask(id) {
+      if (!confirm('Delete this task?')) return;
+      try {
+        await fetch(`/api/tasks/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'deleted' })
+        });
+      } catch (error) {
+        alert('Failed to delete task');
+      }
+    }
+
+    async function sendToSupervisor() {
+      const message = prompt('Message for Supervisor:');
+      if (!message) return;
+      try {
+        await fetch('/api/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: 'Supervisor', message })
+        });
+        alert('Message sent!');
+      } catch (error) {
+        alert('Failed to send message');
+      }
+    }
+
+    async function sendToRex() {
+      const message = prompt('Message for Rex:');
+      if (!message) return;
+      try {
+        await fetch('/api/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: 'Rex', message })
+        });
+        alert('Message sent!');
+      } catch (error) {
+        alert('Failed to send message');
+      }
+    }
+
+    function refreshAll() {
+      location.reload();
+    }
+
+    // Initial render
+    setTimeout(render, 1000);
+  </script>
+</body>
+</html>
